@@ -38,21 +38,34 @@ INSERT INTO authors(
 );
 `
 
-func (r booksRepository) SaveAuthor(*domain.Author) rest_errors.RestErr {
+func (r booksRepository) SaveAuthor(author *domain.Author) rest_errors.RestErr {
 	stmt, err := r.db.Prepare(saveAuthorQuery)
 	if err != nil {
 		return rest_errors.NewInternalServerError(err.Error())
 	}
 	defer stmt.Close()
 
+	inserResult, err := stmt.Exec(author.FirstName, author.LastName, author.Biography, author.Birthday, author.Death)
+	if err != nil {
+		return rest_errors.NewInternalServerError(err.Error())
+	}
+
+	authorId, _ := inserResult.LastInsertId()
+	author.ID = authorId
+
 	return nil
 }
 
-func (r booksRepository) UpdateAuthor(*domain.Author) rest_errors.RestErr
-func (r booksRepository) GetAuthorById(uint32) (domain.AuthorDenormalized, rest_errors.RestErr)
+func (r booksRepository) UpdateAuthor(*domain.Author) rest_errors.RestErr {
+	return nil
+}
 
-const savePublisherQuery = `-- save author
-INSERT INTO authors(
+func (r booksRepository) GetAuthorById(uint32) (*domain.AuthorDenormalized, rest_errors.RestErr) {
+	return nil, nil
+}
+
+const savePublisherQuery = `-- save publisher
+INSERT INTO publishers(
 	name,
 	description,
 	slogan,
@@ -62,18 +75,31 @@ INSERT INTO authors(
 );
 `
 
-func (r booksRepository) SavePublisher(*domain.Publisher) rest_errors.RestErr {
+func (r booksRepository) SavePublisher(publisher *domain.Publisher) rest_errors.RestErr {
 	stmt, err := r.db.Prepare(savePublisherQuery)
 	if err != nil {
 		return rest_errors.NewInternalServerError(err.Error())
 	}
 	defer stmt.Close()
 
+	inserResult, err := stmt.Exec(publisher.Name, publisher.Description, publisher.Slogan, publisher.Founded)
+	if err != nil {
+		return rest_errors.NewInternalServerError(err.Error())
+	}
+
+	publisherId, _ := inserResult.LastInsertId()
+	publisher.ID = publisherId
+
 	return nil
 }
 
-func (r booksRepository) UpdatePublisher(*domain.Publisher) rest_errors.RestErr
-func (r booksRepository) GetPublisherById(uint32) (domain.PublisherDenormalized, rest_errors.RestErr)
+func (r booksRepository) UpdatePublisher(*domain.Publisher) rest_errors.RestErr {
+	return nil
+}
+
+func (r booksRepository) GetPublisherById(uint32) (*domain.PublisherDenormalized, rest_errors.RestErr) {
+	return nil, nil
+}
 
 const (
 	saveBookQuery = `-- save book
@@ -141,29 +167,41 @@ func (r booksRepository) SaveBook(book *domain.Book) rest_errors.RestErr {
 	defer bookStmt.Close()
 
 	bookId, _ := inserResult.LastInsertId()
+	book.ID = bookId
 
-	authorShipStmt, err := tx.Prepare(saveAuthorshipQuery)
-	if err != nil {
-		return rest_errors.NewInternalServerError(err.Error())
-	}
-	defer authorShipStmt.Close()
+	// TODO: would a better implementation of this use go routines?
+	for k := range book.AuthorID {
+		authorShipStmt, err := tx.Prepare(saveAuthorshipQuery)
+		if err != nil {
+			return rest_errors.NewInternalServerError(err.Error())
+		}
+		defer authorShipStmt.Close()
 
-	if _, err = authorShipStmt.Exec(bookId, book.AuthorID); err != nil {
-		return rest_errors.NewInternalServerError(err.Error())
-	}
+		if _, err = authorShipStmt.Exec(bookId, book.AuthorID[k]); err != nil {
+			return rest_errors.NewInternalServerError(err.Error())
+		}
 
-	publishedStmt, err := tx.Prepare(savePublishedQuery)
-	if err != nil {
-		return rest_errors.NewInternalServerError(err.Error())
-	}
-	defer publishedStmt.Close()
+		//
 
-	if _, err = publishedStmt.Exec(book.AuthorID, book.PublisherID); err != nil {
-		return rest_errors.NewInternalServerError(err.Error())
+		publishedStmt, err := tx.Prepare(savePublishedQuery)
+		if err != nil {
+			return rest_errors.NewInternalServerError(err.Error())
+		}
+		defer publishedStmt.Close()
+
+		if _, err = publishedStmt.Exec(book.AuthorID[k], book.PublisherID); err != nil {
+			return rest_errors.NewInternalServerError(err.Error())
+		}
 	}
 
 	tx.Commit()
 	return nil
 }
-func (r booksRepository) UpdateBook(*domain.Book)
-func (r booksRepository) GetBookById(uint32) (domain.BookDenormalized, rest_errors.RestErr)
+
+func (r booksRepository) UpdateBook(*domain.Book) rest_errors.RestErr {
+	return nil
+}
+
+func (r booksRepository) GetBookById(uint32) (*domain.BookDenormalized, rest_errors.RestErr) {
+	return nil, nil
+}

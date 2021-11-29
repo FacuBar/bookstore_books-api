@@ -1,61 +1,33 @@
 package domain
 
-type BookDenormalized struct {
-	Book      *Book      `json:"book"`
-	Authors   []Author   `json:"authors"`
-	Publisher *Publisher `json:"publisher"`
-}
-
-type PublisherDenormalized struct {
-	Publisher *Publisher `json:"publisher"`
-	Authors   []Author   `json:"authors"`
-	Books     []Book     `json:"books"`
-}
-
-type AuthorDenormalized struct {
-	Author     *Author     `json:"author"`
-	Books      []Book      `json:"books"`
-	Publishers []Publisher `json:"publishers"`
-}
-
 type Author struct {
-	ID        int64  `json:"id"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Biography string `json:"biography"`
-	Birthday  string `json:"birthday"`
-	Death     string `json:"death"`
-}
-
-type Authorship struct {
-	BookID   int64 `json:"book_id"`
-	AuthorID int64 `json:"author_id"`
+	ID        int64   `json:"id,omitempty"`
+	FirstName string  `json:"first_name,omitempty"`
+	LastName  string  `json:"last_name,omitempty"`
+	Biography string  `json:"biography,omitempty"`
+	Birthday  string  `json:"birthday,omitempty"`
+	Death     *string `json:"death,omitempty"`
 }
 
 type Book struct {
-	ID               int64   `json:"id"`
-	Name             string  `json:"name"`
-	OriginalRelease  string  `json:"original_release"`
-	Description      string  `json:"description"`
-	ShortDescription string  `json:"short_description"`
-	Publised         string  `json:"publised"`
-	PublisherID      int64   `json:"publisher_id"`
-	Pages            int64   `json:"pages"`
-	AuthorID         []int64 `json:"author_id"`
-	SellerID         int64   `json:"seller_id"`
-}
-
-type Published struct {
-	AuthorID    int64 `json:"author_id"`
-	PublisherID int64 `json:"publisher_id"`
+	ID               int64   `json:"id,omitempty"`
+	Title            string  `json:"title,omitempty"`
+	OriginalRelease  string  `json:"original_release,omitempty"`
+	Description      string  `json:"description,omitempty"`
+	ShortDescription string  `json:"short_description,omitempty"`
+	Published        string  `json:"published,omitempty"`
+	PublisherID      int64   `json:"publisher_id,omitempty"`
+	Pages            int64   `json:"pages,omitempty"`
+	AuthorID         []int64 `json:"author_id,omitempty"`
+	SellerID         int64   `json:"seller_id,omitempty"`
 }
 
 type Publisher struct {
-	ID          int64  `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Slogan      string `json:"slogan"`
-	Founded     string `json:"founded"`
+	ID          int64  `json:"id,omitempty"`
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+	Slogan      string `json:"slogan,omitempty"`
+	Founded     string `json:"founded,omitempty"`
 }
 
 /*

@@ -22,12 +22,13 @@ func NewMock() (*sql.DB, sqlmock.Sqlmock) {
 func TestSaveAuthor(t *testing.T) {
 	query := regexp.QuoteMeta(saveAuthorQuery)
 
+	death := "1982-12-1"
 	testAuthor := domain.Author{
 		FirstName: "Philip",
 		LastName:  "Dick",
 		Biography: "a weird biography ...",
 		Birthday:  "16-12-1928",
-		Death:     "2-3-1982",
+		Death:     &death,
 	}
 
 	t.Run("NoError", func(t *testing.T) {
@@ -85,11 +86,11 @@ func TestSaveBook(t *testing.T) {
 	queryPublished := regexp.QuoteMeta(savePublishedQuery)
 
 	testBook := domain.Book{
-		Name:             "Flow my tears, the policeman said",
+		Title:            "Flow my tears, the policeman said",
 		OriginalRelease:  "01-01-1970",
 		Description:      "some description",
 		ShortDescription: "sm descrpt",
-		Publised:         "20-12-2021",
+		Published:        "20-12-2021",
 		PublisherID:      12,
 		Pages:            256,
 		AuthorID:         []int64{0, 1},
@@ -104,11 +105,11 @@ func TestSaveBook(t *testing.T) {
 
 		mock.ExpectBegin()
 		mock.ExpectPrepare(queryBook).ExpectExec().WithArgs(
-			book.Name,
+			book.Title,
 			book.OriginalRelease,
 			book.Description,
 			book.ShortDescription,
-			book.Publised,
+			book.Published,
 			book.PublisherID,
 			book.Pages,
 			book.SellerID,

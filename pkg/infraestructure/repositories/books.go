@@ -56,12 +56,95 @@ func (r booksRepository) SaveAuthor(author *domain.Author) rest_errors.RestErr {
 	return nil
 }
 
-func (r booksRepository) UpdateAuthor(*domain.Author) rest_errors.RestErr {
-	return nil
+const (
+	getAuthorById = `-- get author
+	SELECT
+		first_name,
+		last_name,
+		biography,
+		birthday,
+		death
+	FROM authors
+	WHERE authors.id = ?;	
+	`
+
+	getBooksFromAuthor = `-- get books from author
+	SELECT
+		books.id,
+		books.title,
+		books.published,
+		books.short_description,
+		books.original_release
+	FROM authors
+	INNER JOIN authorship
+		ON authorship.author_id = authors.id
+	INNER JOIN books
+		ON authorship.book_id = books.id
+	WHERE authors.id = ?;
+	`
+)
+
+func (r booksRepository) GetAuthorById(authorID int64) (*domain.AuthorDenormalized, rest_errors.RestErr) {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return nil, rest_errors.NewInternalServerError(err.Error())
+	}
+	defer tx.Rollback()
+
+	var author domain.AuthorDenormalized
+
+	authorStmt, err := tx.Prepare(getAuthorById)
+	if err != nil {
+		return nil, rest_errors.NewInternalServerError(err.Error())
+	}
+	defer authorStmt.Close()
+
+	if err := authorStmt.QueryRow(authorID).Scan(
+		&author.Author.FirstName,
+		&author.Author.LastName,
+		&author.Author.Biography,
+		&author.Author.Birthday,
+		&author.Author.Death,
+	); err != nil {
+		return nil, rest_errors.NewInternalServerError(err.Error())
+	}
+
+	//
+
+	booksStmt, err := tx.Prepare(getBooksFromAuthor)
+	if err != nil {
+		return nil, rest_errors.NewInternalServerError(err.Error())
+	}
+	defer booksStmt.Close()
+
+	rows, err := booksStmt.Query(authorID)
+	if err != nil {
+		return nil, rest_errors.NewInternalServerError(err.Error())
+	}
+
+	var books domain.Book
+	for rows.Next() {
+		if err := rows.Scan(
+			&books.ID,
+			&books.Title,
+			&books.Published,
+			&books.ShortDescription,
+			&books.OriginalRelease,
+		); err != nil {
+			return nil, rest_errors.NewInternalServerError(err.Error())
+		}
+		author.Books = append(author.Books, books)
+	}
+	rows.Close()
+
+	if err := tx.Commit(); err != nil {
+		return nil, rest_errors.NewInternalServerError(err.Error())
+	}
+	return &author, nil
 }
 
-func (r booksRepository) GetAuthorById(uint32) (*domain.AuthorDenormalized, rest_errors.RestErr) {
-	return nil, nil
+func (r booksRepository) UpdateAuthor(*domain.Author) rest_errors.RestErr {
+	return nil
 }
 
 const savePublisherQuery = `-- save publisher
@@ -97,14 +180,14 @@ func (r booksRepository) UpdatePublisher(*domain.Publisher) rest_errors.RestErr 
 	return nil
 }
 
-func (r booksRepository) GetPublisherById(uint32) (*domain.PublisherDenormalized, rest_errors.RestErr) {
+func (r booksRepository) GetPublisherById(publisherID int64) (*domain.PublisherDenormalized, rest_errors.RestErr) {
 	return nil, nil
 }
 
 const (
 	saveBookQuery = `-- save book
-	INSERT INTO authors(
-		name,
+	INSERT INTO books(
+		title,
 		original_release,
 		description,
 		short_description,
@@ -127,7 +210,7 @@ const (
 	`
 
 	savePublishedQuery = `-- save published
-	INSERT INTO published(
+	INSERT IGNORE INTO published(
 		author_id,
 		publisher_id
 	) VALUES (
@@ -152,11 +235,11 @@ func (r booksRepository) SaveBook(book *domain.Book) rest_errors.RestErr {
 	}
 
 	inserResult, err := bookStmt.Exec(
-		book.Name,
+		book.Title,
 		book.OriginalRelease,
 		book.Description,
 		book.ShortDescription,
-		book.Publised,
+		book.Published,
 		book.PublisherID,
 		book.Pages,
 		book.SellerID,
@@ -198,10 +281,95 @@ func (r booksRepository) SaveBook(book *domain.Book) rest_errors.RestErr {
 	return nil
 }
 
-func (r booksRepository) UpdateBook(*domain.Book) rest_errors.RestErr {
-	return nil
+const (
+	getBookById = ` -- get book
+	SELECT 
+		books.title,
+		books.original_release,  
+		books.description,      
+		books.short_description, 
+		books.published,        
+		books.pages,            
+		books.seller_id,
+		publishers.id,
+		publishers.name
+	FROM books
+	INNER JOIN publishers
+	ON publishers.id = books.publisher_id
+	WHERE books.id = ?;         
+	`
+
+	getAuthorsForBook = ` -- get authors for book
+	SELECT 
+		authors.id,
+		authors.first_name,
+		authors.last_name
+	FROM authors
+	INNER JOIN authorship
+		ON authors.id = authorship.author_id
+	WHERE authorship.book_id = ?;
+	`
+)
+
+func (r booksRepository) GetBookById(bookID int64) (*domain.BookDenormalized, rest_errors.RestErr) {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return nil, rest_errors.NewInternalServerError(err.Error())
+	}
+
+	bookStmt, err := tx.Prepare(getBookById)
+	if err != nil {
+		return nil, rest_errors.NewInternalServerError(err.Error())
+	}
+	defer bookStmt.Close()
+
+	var book domain.BookDenormalized
+
+	if err := bookStmt.QueryRow(bookID).Scan(
+		&book.Book.Title,
+		&book.Book.OriginalRelease,
+		&book.Book.Description,
+		&book.Book.ShortDescription,
+		&book.Book.Published,
+		&book.Book.Pages,
+		&book.Book.SellerID,
+		&book.Publisher.ID,
+		&book.Publisher.Name,
+	); err != nil {
+		return nil, rest_errors.NewInternalServerError(err.Error())
+	}
+
+	//
+
+	authorsStmt, err := r.db.Prepare(getAuthorsForBook)
+	if err != nil {
+		return nil, rest_errors.NewInternalServerError(err.Error())
+	}
+	defer authorsStmt.Close()
+
+	rows, err := authorsStmt.Query(bookID)
+	if err != nil {
+		return nil, rest_errors.NewInternalServerError(err.Error())
+	}
+
+	var author domain.Author
+
+	for rows.Next() {
+		if err := rows.Scan(
+			&author.ID,
+			&author.FirstName,
+			&author.LastName,
+		); err != nil {
+			return nil, rest_errors.NewInternalServerError(err.Error())
+		}
+
+		book.Authors = append(book.Authors, author)
+	}
+	rows.Close()
+
+	return &book, nil
 }
 
-func (r booksRepository) GetBookById(uint32) (*domain.BookDenormalized, rest_errors.RestErr) {
-	return nil, nil
+func (r booksRepository) UpdateBook(book *domain.Book) rest_errors.RestErr {
+	return nil
 }

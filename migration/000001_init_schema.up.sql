@@ -21,7 +21,7 @@ CREATE TABLE `authors` (
 
 CREATE TABLE `books` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `name` VARCHAR(255) NOT NULL,
+  `title` VARCHAR(255) NOT NULL,
   `original_release` DATE NOT NULL,
   `description` TEXT NOT NULL,
   `short_description` TEXT NOT NULL,

@@ -19,7 +19,7 @@ type AuthorDenormalized struct {
 }
 
 type Author struct {
-	ID        uint32 `json:"id"`
+	ID        int64  `json:"id"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
 	Biography string `json:"biography"`
@@ -28,30 +28,30 @@ type Author struct {
 }
 
 type Authorship struct {
-	BookID   uint32 `json:"book_id"`
-	AuthorID uint32 `json:"author_id"`
+	BookID   int64 `json:"book_id"`
+	AuthorID int64 `json:"author_id"`
 }
 
 type Book struct {
-	ID               uint32 `json:"id"`
-	Name             string `json:"name"`
-	OriginalRelease  string `json:"original_release"`
-	Description      string `json:"description"`
-	ShortDescription string `json:"short_description"`
-	Publised         string `json:"publised"`
-	PublisherID      uint32 `json:"publisher_id"`
-	Pages            uint32 `json:"pages"`
-	AuthorID         uint32 `json:"author_id"`
-	SellerID         uint32 `json:"seller_id"`
+	ID               int64   `json:"id"`
+	Name             string  `json:"name"`
+	OriginalRelease  string  `json:"original_release"`
+	Description      string  `json:"description"`
+	ShortDescription string  `json:"short_description"`
+	Publised         string  `json:"publised"`
+	PublisherID      int64   `json:"publisher_id"`
+	Pages            int64   `json:"pages"`
+	AuthorID         []int64 `json:"author_id"`
+	SellerID         int64   `json:"seller_id"`
 }
 
 type Published struct {
-	AuthorID    uint32 `json:"author_id"`
-	PublisherID uint32 `json:"publisher_id"`
+	AuthorID    int64 `json:"author_id"`
+	PublisherID int64 `json:"publisher_id"`
 }
 
 type Publisher struct {
-	ID          uint32 `json:"id"`
+	ID          int64  `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Slogan      string `json:"slogan"`

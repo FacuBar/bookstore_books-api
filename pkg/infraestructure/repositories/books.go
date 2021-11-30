@@ -176,12 +176,130 @@ func (r booksRepository) SavePublisher(publisher *domain.Publisher) rest_errors.
 	return nil
 }
 
-func (r booksRepository) UpdatePublisher(*domain.Publisher) rest_errors.RestErr {
-	return nil
-}
+const (
+	getPublisherById = ` -- get publisher
+	SELECT 
+		name,        
+		description, 
+		slogan,      
+		founded
+	FROM publishers
+	WHERE id = ?;
+	`
+
+	getAuthorsForPublisher = `
+	SELECT 
+		authors.id,
+		authors.first_name,
+		authors.last_name,
+		authors.biography
+	FROM publishers
+	INNER JOIN published
+		ON published.publisher_id = publishers.id
+	INNER JOIN authors
+		ON published.author_id = authors.id
+	WHERE publishers.id = ?;
+	`
+
+	getBooksForPublisher = `
+	SELECT
+		id,
+		title,
+		short_description,
+		published,
+		pages
+	FROM books
+	WHERE publisher_id = ?;
+	`
+)
 
 func (r booksRepository) GetPublisherById(publisherID int64) (*domain.PublisherDenormalized, rest_errors.RestErr) {
-	return nil, nil
+	tx, err := r.db.Begin()
+	if err != nil {
+		return nil, rest_errors.NewInternalServerError(err.Error())
+	}
+	defer tx.Rollback()
+
+	var publisher domain.PublisherDenormalized
+
+	publisherStmt, err := tx.Prepare(getPublisherById)
+	if err != nil {
+		return nil, rest_errors.NewInternalServerError(err.Error())
+	}
+	defer publisherStmt.Close()
+
+	if err := publisherStmt.QueryRow(publisherID).Scan(
+		&publisher.Publisher.Name,
+		&publisher.Publisher.Description,
+		&publisher.Publisher.Slogan,
+		&publisher.Publisher.Founded,
+	); err != nil {
+		return nil, rest_errors.NewInternalServerError(err.Error())
+	}
+
+	//
+
+	authorsStmt, err := tx.Prepare(getAuthorsForPublisher)
+	if err != nil {
+		return nil, rest_errors.NewInternalServerError(err.Error())
+	}
+	defer authorsStmt.Close()
+
+	authRows, err := authorsStmt.Query(publisherID)
+	if err != nil {
+		return nil, rest_errors.NewInternalServerError(err.Error())
+	}
+
+	var author domain.Author
+
+	for authRows.Next() {
+		if err := authRows.Scan(
+			&author.ID,
+			&author.FirstName,
+			&author.LastName,
+			&author.Biography,
+		); err != nil {
+			return nil, rest_errors.NewInternalServerError(err.Error())
+		}
+
+		publisher.Authors = append(publisher.Authors, author)
+	}
+	authRows.Close()
+
+	//
+
+	booksStmt, err := tx.Prepare(getBooksForPublisher)
+	if err != nil {
+		return nil, rest_errors.NewInternalServerError(err.Error())
+	}
+	defer booksStmt.Close()
+
+	var book domain.Book
+	booksRow, err := booksStmt.Query(publisherID)
+	if err != nil {
+		return nil, rest_errors.NewInternalServerError(err.Error())
+	}
+
+	for booksRow.Next() {
+		if err := booksRow.Scan(
+			&book.ID,
+			&book.Title,
+			&book.ShortDescription,
+			&book.Published,
+			&book.Pages,
+		); err != nil {
+			return nil, rest_errors.NewInternalServerError(err.Error())
+		}
+		publisher.Books = append(publisher.Books, book)
+	}
+	booksRow.Close()
+
+	tx.Commit()
+	return &publisher, nil
+}
+
+func (r booksRepository) UpdatePublisher(*domain.Publisher) rest_errors.RestErr {
+	return nil
 }
 
 const (

@@ -15,6 +15,7 @@ func (s *Server) handler(br ports.BooksRepositoryInterface) *gin.Engine {
 
 	router.GET("/authors/:author_id", getAuthor(br))
 	router.GET("/books/:book_id", getBook(br))
+	router.GET("/publishers/:publisher_id", getPublisher(br))
 
 	router.POST("/authors", createAuthor(br))
 	router.POST("/publishers", createPublisher(br))
@@ -109,5 +110,24 @@ func getBook(br ports.BooksRepositoryInterface) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, book)
+	}
+}
+
+func getPublisher(br ports.BooksRepositoryInterface) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		publisherID, idErr := strconv.ParseInt(c.Param("publisher_id"), 10, 64)
+		if idErr != nil {
+			restErr := rest_errors.NewBadRequestError("invalid publisher id")
+			c.JSON(restErr.Status(), restErr)
+			return
+		}
+
+		publisher, err := br.GetPublisherById(publisherID)
+		if err != nil {
+			c.JSON(err.Status(), err)
+			return
+		}
+
+		c.JSON(http.StatusOK, publisher)
 	}
 }

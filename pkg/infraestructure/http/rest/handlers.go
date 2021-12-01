@@ -17,9 +17,9 @@ func (s *Server) handler(br ports.BooksRepositoryInterface) *gin.Engine {
 	router.GET("/books/:book_id", getBook(br))
 	router.GET("/publishers/:publisher_id", getPublisher(br))
 
-	router.POST("/authors", createAuthor(br))
-	router.POST("/publishers", createPublisher(br))
-	router.POST("/books", createBook(br))
+	router.POST("/authors", authenticate(createAuthor(br), http.DefaultClient))
+	router.POST("/publishers", authenticate(createPublisher(br), http.DefaultClient))
+	router.POST("/books", authenticate(createBook(br), http.DefaultClient))
 
 	return router
 }
@@ -29,6 +29,13 @@ func createAuthor(br ports.BooksRepositoryInterface) gin.HandlerFunc {
 		var author domain.Author
 		if err := c.ShouldBindJSON(&author); err != nil {
 			restErr := rest_errors.NewBadRequestError("invalid request")
+			c.JSON(restErr.Status(), restErr)
+			return
+		}
+
+		authorizedUser := c.MustGet(userPayloadKey).(userPayload)
+		if authorizedUser.Role != "admin" {
+			restErr := rest_errors.NewUnauthorizedError("you don't have the permissions to access this resource")
 			c.JSON(restErr.Status(), restErr)
 			return
 		}
@@ -50,6 +57,13 @@ func createPublisher(br ports.BooksRepositoryInterface) gin.HandlerFunc {
 			return
 		}
 
+		authorizedUser := c.MustGet(userPayloadKey).(userPayload)
+		if authorizedUser.Role != "admin" {
+			restErr := rest_errors.NewUnauthorizedError("you don't have the permissions to access this resource")
+			c.JSON(restErr.Status(), restErr)
+			return
+		}
+
 		if err := br.SavePublisher(&publisher); err != nil {
 			c.JSON(err.Status(), err)
 			return
@@ -66,6 +80,15 @@ func createBook(br ports.BooksRepositoryInterface) gin.HandlerFunc {
 			c.JSON(restErr.Status(), restErr)
 			return
 		}
+
+		authorizedUser := c.MustGet(userPayloadKey).(userPayload)
+		if authorizedUser.Role != "admin" {
+			restErr := rest_errors.NewUnauthorizedError("you don't have the permissions to access this resource")
+			c.JSON(restErr.Status(), restErr)
+			return
+		}
+
+		book.SellerID = authorizedUser.Id
 
 		if err := br.SaveBook(&book); err != nil {
 			c.JSON(err.Status(), err)

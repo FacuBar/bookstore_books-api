@@ -19,6 +19,21 @@ func NewMock() (*sql.DB, sqlmock.Sqlmock) {
 
 	return db, mock
 }
+
+var (
+	testBook = domain.Book{
+		Title:            "Flow my tears, the policeman said",
+		OriginalRelease:  "01-01-1970",
+		Description:      "some description",
+		ShortDescription: "sm descrpt",
+		Published:        "20-12-2021",
+		PublisherID:      12,
+		Pages:            256,
+		AuthorID:         []int64{0, 1},
+		SellerID:         1,
+	}
+)
+
 func TestSaveAuthor(t *testing.T) {
 	query := regexp.QuoteMeta(saveAuthorQuery)
 
@@ -85,18 +100,6 @@ func TestSaveBook(t *testing.T) {
 	queryAuthorShip := regexp.QuoteMeta(saveAuthorshipQuery)
 	queryPublished := regexp.QuoteMeta(savePublishedQuery)
 
-	testBook := domain.Book{
-		Title:            "Flow my tears, the policeman said",
-		OriginalRelease:  "01-01-1970",
-		Description:      "some description",
-		ShortDescription: "sm descrpt",
-		Published:        "20-12-2021",
-		PublisherID:      12,
-		Pages:            256,
-		AuthorID:         []int64{0, 1},
-		SellerID:         1,
-	}
-
 	t.Run("NoError", func(t *testing.T) {
 		db, mock := NewMock()
 
@@ -132,5 +135,61 @@ func TestSaveBook(t *testing.T) {
 		err := repo.SaveBook(&book)
 		assert.Nil(t, err)
 		assert.EqualValues(t, 69, book.ID)
+	})
+}
+
+func TestGetBookByID(t *testing.T) {
+	queryBook := regexp.QuoteMeta(getBookById)
+	queryAuthors := regexp.QuoteMeta(getAuthorsForBook)
+
+	t.Run("NoError", func(t *testing.T) {
+		bookRow := sqlmock.NewRows([]string{
+			"books.title",
+			"books.original_release",
+			"books.description",
+			"books.short_description",
+			"books.published",
+			"books.pages",
+			"books.seller_id",
+			"publishers.id",
+			"publishers.name",
+		}).
+			AddRow(
+				testBook.Title,
+				testBook.OriginalRelease,
+				testBook.Description,
+				testBook.ShortDescription,
+				testBook.Published,
+				testBook.Pages,
+				testBook.SellerID,
+				testBook.PublisherID,
+				"penguin",
+			)
+
+		authorRows := sqlmock.NewRows([]string{
+			"authors.id",
+			"authors.first_name",
+			"authors.last_name",
+		}).AddRow(
+			0,
+			"Philip",
+			"Dick",
+		).AddRow(
+			1,
+			"Jorge Luis",
+			"Borges",
+		)
+
+		db, mock := NewMock()
+		repo := booksRepository{db: db}
+
+		bookID := 1
+		mock.ExpectBegin()
+		mock.ExpectPrepare(queryBook).ExpectQuery().WithArgs(bookID).WillReturnRows(bookRow)
+		mock.ExpectPrepare(queryAuthors).ExpectQuery().WithArgs(bookID).WillReturnRows(authorRows)
+		mock.ExpectCommit()
+
+		_, err := repo.GetBookById(int64(bookID))
+		assert.Nil(t, err)
 	})
 }

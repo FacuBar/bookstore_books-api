@@ -343,9 +343,7 @@ func (r booksRepository) SaveBook(book *domain.Book) rest_errors.RestErr {
 		return rest_errors.NewInternalServerError(err.Error())
 	}
 
-	defer func() {
-		_ = tx.Rollback()
-	}()
+	defer tx.Rollback()
 
 	bookStmt, err := tx.Prepare(saveBookQuery)
 	if err != nil {
@@ -435,6 +433,8 @@ func (r booksRepository) GetBookById(bookID int64) (*domain.BookDenormalized, re
 		return nil, rest_errors.NewInternalServerError(err.Error())
 	}
 
+	defer tx.Rollback()
+
 	bookStmt, err := tx.Prepare(getBookById)
 	if err != nil {
 		return nil, rest_errors.NewInternalServerError(err.Error())
@@ -485,6 +485,7 @@ func (r booksRepository) GetBookById(bookID int64) (*domain.BookDenormalized, re
 	}
 	rows.Close()
 
+	tx.Commit()
 	return &book, nil
 }
 

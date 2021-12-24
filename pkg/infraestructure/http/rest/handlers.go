@@ -6,6 +6,7 @@ import (
 
 	"github.com/FacuBar/bookstore_books-api/pkg/core/domain"
 	"github.com/FacuBar/bookstore_books-api/pkg/core/ports"
+	"github.com/FacuBar/bookstore_utils-go/auth"
 	"github.com/FacuBar/bookstore_utils-go/rest_errors"
 	"github.com/gin-gonic/gin"
 )
@@ -17,9 +18,9 @@ func (s *Server) handler(br ports.BooksRepositoryInterface) *gin.Engine {
 	router.GET("/books/:book_id", getBook(br))
 	router.GET("/publishers/:publisher_id", getPublisher(br))
 
-	router.POST("/authors", authenticate(createAuthor(br), http.DefaultClient))
-	router.POST("/publishers", authenticate(createPublisher(br), http.DefaultClient))
-	router.POST("/books", authenticate(createBook(br), http.DefaultClient))
+	router.POST("/authors", auth.RequiresAuth(createAuthor(br), s.oauthC.C))
+	router.POST("/publishers", auth.RequiresAuth(createPublisher(br), s.oauthC.C))
+	router.POST("/books", auth.RequiresAuth(createBook(br), s.oauthC.C))
 
 	return router
 }
@@ -33,7 +34,7 @@ func createAuthor(br ports.BooksRepositoryInterface) gin.HandlerFunc {
 			return
 		}
 
-		authorizedUser := c.MustGet(userPayloadKey).(userPayload)
+		authorizedUser := c.MustGet("user_payload").(auth.UserPayload)
 		if authorizedUser.Role != "admin" {
 			restErr := rest_errors.NewUnauthorizedError("you don't have the permissions to access this resource")
 			c.JSON(restErr.Status(), restErr)
@@ -57,7 +58,7 @@ func createPublisher(br ports.BooksRepositoryInterface) gin.HandlerFunc {
 			return
 		}
 
-		authorizedUser := c.MustGet(userPayloadKey).(userPayload)
+		authorizedUser := c.MustGet("user_payload").(auth.UserPayload)
 		if authorizedUser.Role != "admin" {
 			restErr := rest_errors.NewUnauthorizedError("you don't have the permissions to access this resource")
 			c.JSON(restErr.Status(), restErr)
@@ -81,7 +82,7 @@ func createBook(br ports.BooksRepositoryInterface) gin.HandlerFunc {
 			return
 		}
 
-		authorizedUser := c.MustGet(userPayloadKey).(userPayload)
+		authorizedUser := c.MustGet("user_payload").(auth.UserPayload)
 		if authorizedUser.Role != "admin" {
 			restErr := rest_errors.NewUnauthorizedError("you don't have the permissions to access this resource")
 			c.JSON(restErr.Status(), restErr)

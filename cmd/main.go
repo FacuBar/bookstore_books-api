@@ -10,6 +10,7 @@ import (
 
 	"github.com/FacuBar/bookstore_books-api/pkg/infraestructure/clients"
 	"github.com/FacuBar/bookstore_books-api/pkg/infraestructure/http/rest"
+	"github.com/FacuBar/bookstore_utils-go/auth"
 	"github.com/joho/godotenv"
 )
 
@@ -21,7 +22,12 @@ func main() {
 
 	db := clients.ConnectDB()
 
-	server := rest.NewServer(&http.Server{Addr: ":8082"}, db)
+	oauthClient, err := auth.NewClient("0.0.0.0:10000")
+	if err != nil {
+		panic("error initializing grpc client")
+	}
+
+	server := rest.NewServer(&http.Server{Addr: ":8082"}, db, oauthClient)
 
 	go server.Start()
 

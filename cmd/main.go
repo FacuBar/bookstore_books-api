@@ -22,12 +22,12 @@ func main() {
 
 	db := clients.ConnectDB()
 
-	oauthClient, err := auth.NewClient("0.0.0.0:10000")
+	oauthClient, err := auth.NewClient(os.Getenv("GRPC_ADDRESS"))
 	if err != nil {
 		panic("error initializing grpc client")
 	}
 
-	server := rest.NewServer(&http.Server{Addr: ":8082"}, db, oauthClient)
+	server := rest.NewServer(&http.Server{Addr: os.Getenv("PORT")}, db, oauthClient)
 
 	go server.Start()
 
